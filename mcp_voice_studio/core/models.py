@@ -41,6 +41,12 @@ class SynthRequest(BaseModel):
             "'L->R' (slow sweep L to R), 'R->L' (slow sweep R to L). None = no panning."
         ),
     )
+    period_s: float = Field(
+        2.0,
+        ge=0.1,
+        le=20.0,
+        description="Period in seconds for L<->R/L->R/R->L panning modes. ASMR sweet spot: 2-3s.",
+    )
     silence_padding_ms: int = Field(
         0,
         ge=0,
@@ -51,17 +57,35 @@ class SynthRequest(BaseModel):
         None,
         description="Reverb mode: 'none', 'small_room' (ASMR-tight), 'large_room' (spacious). None = off.",
     )
+    reverb_damping: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Reverb HF damping 0..1. 0=classic Schroeder, 0.5=soft rolloff (default), 1.0=heavy.",
+    )
     binaural_beat_hz: float = Field(
         0.0,
         ge=0.0,
         le=40.0,
         description="Binaural beat frequency in Hz (L = carrier, R = carrier + beat). 0 = off. ASMR relax: 4-8 Hz.",
     )
+    binaural_amplitude: float = Field(
+        0.0005,
+        ge=0.0,
+        le=0.1,
+        description="Binaural carrier amplitude 0..1. 0.0005 (default) = -66dBFS sub-audible.",
+    )
     lowpass_cutoff_hz: float = Field(
         0.0,
         ge=0.0,
         le=20000.0,
         description="Lowpass cutoff in Hz for warmth/intimacy. 0 = off. ASMR sweet spot: 5000-7000.",
+    )
+    highpass_cutoff_hz: float = Field(
+        60.0,
+        ge=0.0,
+        le=1000.0,
+        description="Highpass cutoff in Hz for DC/sub-bass cleanup. Default = 60 Hz (always on). 0 = off.",
     )
 
 

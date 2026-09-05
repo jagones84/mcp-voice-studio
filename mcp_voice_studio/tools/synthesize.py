@@ -79,10 +79,14 @@ def synthesize_speech(
     speed: float = 1.0,
     output_path: str | None = None,
     stereo_pan: str | None = None,
+    period_s: float = 2.0,
     silence_padding_ms: int = 0,
     reverb: str | None = None,
+    reverb_damping: float = 0.5,
     binaural_beat_hz: float = 0.0,
+    binaural_amplitude: float = 0.0005,
     lowpass_cutoff_hz: float = 0.0,
+    highpass_cutoff_hz: float = 60.0,
 ) -> dict:
     """Generate speech audio with a cloned voice (from voice_name) or voice design (instruct only).
 
@@ -99,10 +103,14 @@ def synthesize_speech(
 
         # ASMR enhancements (all optional, applied as a post-synth pipeline):
         stereo_pan: 'center' | 'L' | 'R' | 'L<->R' (alternating) | 'L->R' (sweep) | 'R->L'.
+        period_s: Period in seconds for L<->R/L->R/R->L modes (default 2.0).
         silence_padding_ms: ms of silence between sentences (split on . ? !), 0 = off.
         reverb: 'small_room' | 'large_room' (subtle mix), None/'none' = off.
-        binaural_beat_hz: 0 = off. ASMR relax: 4-8 Hz (theta-alpha).
+        reverb_damping: 0..1, HF damping in reverb tail (default 0.5, recommended).
+        binaural_beat_hz: 0 = off (default). ASMR relax: 4-8 Hz (theta-alpha).
+        binaural_amplitude: carrier amplitude 0..1, default 0.0005 (-66dBFS, sub-audible).
         lowpass_cutoff_hz: 0 = off. ASMR warmth: 5000-7000 Hz.
+        highpass_cutoff_hz: default 60 Hz (always on). 0 = off.
 
     Returns:
         Dict with output_path, duration_s, sample_rate, channels, voice_name, generation_time_s,
@@ -140,10 +148,14 @@ def synthesize_speech(
         speed=speed,
         output_path=str(out),
         stereo_pan=stereo_pan,
+        period_s=period_s,
         silence_padding_ms=silence_padding_ms,
         reverb=reverb,
+        reverb_damping=reverb_damping,
         binaural_beat_hz=binaural_beat_hz,
+        binaural_amplitude=binaural_amplitude,
         lowpass_cutoff_hz=lowpass_cutoff_hz,
+        highpass_cutoff_hz=highpass_cutoff_hz,
     )
     _validate_asmr(req)
 
@@ -162,17 +174,23 @@ def synthesize_speech(
                 text=req.text,
                 sample_rate=24000,
                 stereo_pan=req.stereo_pan,
+                period_s=req.period_s,
                 silence_padding_ms=req.silence_padding_ms,
                 reverb=req.reverb,
+                reverb_damping=req.reverb_damping,
                 binaural_beat_hz=req.binaural_beat_hz,
+                binaural_amplitude=req.binaural_amplitude,
                 lowpass_cutoff_hz=req.lowpass_cutoff_hz,
+                highpass_cutoff_hz=req.highpass_cutoff_hz,
             )
+            if req.highpass_cutoff_hz > 0:
+                asmr_applied.append(f"highpass({req.highpass_cutoff_hz:g}Hz)")
             if req.lowpass_cutoff_hz > 0:
                 asmr_applied.append(f"lowpass({req.lowpass_cutoff_hz:g}Hz)")
             if req.stereo_pan is not None:
                 asmr_applied.append(f"stereo_pan({req.stereo_pan})")
             if req.reverb is not None and req.reverb != "none":
-                asmr_applied.append(f"reverb({req.reverb})")
+                asmr_applied.append(f"reverb({req.reverb}, damping={req.reverb_damping:g})")
             if req.binaural_beat_hz > 0:
                 asmr_applied.append(f"binaural_beat({req.binaural_beat_hz:g}Hz)")
             if req.silence_padding_ms > 0:
@@ -205,14 +223,18 @@ def design_voice(
     speed: float = 1.0,
     output_path: str | None = None,
     stereo_pan: str | None = None,
+    period_s: float = 2.0,
     silence_padding_ms: int = 0,
     reverb: str | None = None,
+    reverb_damping: float = 0.5,
     binaural_beat_hz: float = 0.0,
+    binaural_amplitude: float = 0.0005,
     lowpass_cutoff_hz: float = 0.0,
+    highpass_cutoff_hz: float = 60.0,
 ) -> dict:
     """Generate speech using ONLY voice design (no cloned voice).
 
-    Same parameters as synthesize_speech, including ASMR enhancements.
+    Same parameters as synthesize_speech, including all 6 ASMR enhancements.
     """
     return synthesize_speech(
         text=text,
@@ -224,8 +246,12 @@ def design_voice(
         speed=speed,
         output_path=output_path,
         stereo_pan=stereo_pan,
+        period_s=period_s,
         silence_padding_ms=silence_padding_ms,
         reverb=reverb,
+        reverb_damping=reverb_damping,
         binaural_beat_hz=binaural_beat_hz,
+        binaural_amplitude=binaural_amplitude,
         lowpass_cutoff_hz=lowpass_cutoff_hz,
+        highpass_cutoff_hz=highpass_cutoff_hz,
     )
