@@ -1,0 +1,42 @@
+[project]
+name = "mcp-voice-studio"
+version = "0.1.0"
+description = "MCP server wrapper for VoiceStudio (OmniVoice engine) - voice cloning, synthesis, voice design"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Giovanni" }]
+keywords = ["mcp", "voice-cloning", "tts", "omnivoice", "asr"]
+
+dependencies = [
+    "mcp>=1.0,<2.0",
+    "pydantic>=2.5.0",
+    "numpy>=1.26,<3.0",
+    "scipy>=1.11,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_voice_studio"]
+
+[tool.uv]
+# Reuse VoiceStudio's .venv to avoid duplicating 5GB of torch+CUDA libs
+# Set VOICESTUDIO_VENV env var to point there; default = ../VoiceStudio/.venv
+# Actual engine call is subprocess or sys.path injection, see core/engine.py
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]

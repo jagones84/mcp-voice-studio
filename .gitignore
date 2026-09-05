@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Runtime data (voice profiles, generated WAVs, logs)
+mcp_voice_studio/data/voices/*
+!mcp_voice_studio/data/voices/.gitkeep
+mcp_voice_studio/data/outputs/*
+!mcp_voice_studio/data/outputs/.gitkeep
+mcp_voice_studio/data/logs/*
+!mcp_voice_studio/data/logs/.gitkeep
+mcp_voice_studio/data/inputs/*
+!mcp_voice_studio/data/inputs/.gitkeep
+
+# Secrets
+.env
+*.pem
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

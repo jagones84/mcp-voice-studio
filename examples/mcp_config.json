@@ -1,0 +1,18 @@
+{
+  "_comment": "Snippet for .mcp.json (Trae IDE) or claude_desktop_config.json. Replace dgx with your SSH host alias and hf_xxx with your real HF token (free at https://huggingface.co/settings/tokens).",
+  "mcpServers": {
+    "voice-studio": {
+      "command": "ssh",
+      "args": [
+        "dgx",
+        "cd /home/jagones/Repositories/mcp-voice-studio && /home/jagones/.local/bin/uv run --no-sync python -m mcp_voice_studio"
+      ],
+      "env": {
+        "HF_TOKEN": "hf_xxx",
+        "HUGGING_FACE_HUB_TOKEN": "hf_xxx",
+        "VOICESTUDIO_VENV": "/home/jagones/Repositories/VoiceStudio/.venv",
+        "CUDA_VISIBLE_DEVICES": "0"
+      }
+    }
+  }
+}
