@@ -15,6 +15,23 @@ mcp_voice_studio/data/logs/*
 mcp_voice_studio/data/inputs/*
 !mcp_voice_studio/data/inputs/.gitkeep
 
+# Runtime data (root-level, where outputs actually land)
+data/outputs/*
+!data/outputs/.gitkeep
+data/voices/*
+!data/voices/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+data/inputs/*
+!data/inputs/.gitkeep
+
+# Generated audio anywhere
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+
 # Secrets
 .env
 *.pem

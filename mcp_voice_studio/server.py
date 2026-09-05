@@ -122,12 +122,48 @@ mcp = FastMCP(
         "  design_voice(text, instruct='whisper, female, low pitch', [ASMR params]) -> voice design\n"
         "  3. list_voices / get_voice_info / delete_voice for management.\n"
         "\n"
+        "*** CLONE SELECTION RULES (CRITICAL, follow BEFORE calling clone_voice_from_audio) ***\n"
+        "\n"
+        "1. SOURCE LICENSE: prefer verifiable CC0 / Public Domain / royalty-free sources.\n"
+        "   GOOD: archive.org CC0, NASA PD-US-Gov, YouTube CC0-dedicated channels, PD dedicati.\n"
+        "   BAD:  recent YouTube videos of unclear license, ASMR roleplay scripts (copyright),\n"
+        "         anything with a publisher/label attached.\n"
+        "2. AUDIO PURITY: the reference clip must contain ONLY the target speaker.\n"
+        "   NO background music, NO jingles, NO sound effects, NO echo, NO reverb baked in.\n"
+        "   For YouTube, avoid intro/outro, avoid musical interludes. Pick sections where the\n"
+        "   speaker is alone in a quiet room or studio. If unsure, listen first with ffplay\n"
+        "   or check the waveform with audiowaveform / scipy.\n"
+        "3. SINGLE SPEAKER: never use a clip with multiple speakers, crosstalk, or background\n"
+        "   chatter. ASMR 'personal attention' or 'guided meditation' is ideal; ASMR roleplay\n"
+        "   (parrucchiere, moglie) is risky because scripted.\n"
+        "4. DURATION: 5-30 seconds ideal. < 3s: too little acoustic data. > 60s: slow + may include\n"
+        "   unwanted segments. 15 seconds is the sweet spot.\n"
+        "5. ref_text ACCURACY: ref_text MUST be the EXACT transcript of the clip, with correct\n"
+        "   punctuation. Always run the source through Whisper (use the openclaw\n"
+        "   'youtube-transcriber' skill on DGX) and then MANUALLY correct errors. Whisper\n"
+        "   common mistakes: 'subbuglio'->'subulio', 'Picasso'->'picasso', 'ChatGPT'->'chat gpt',\n"
+        "   'Pessoa'->'Pessua', 'Kandinsky'->'candinsky', etc. Wrong transcripts degrade prosody.\n"
+        "6. ref_text LENGTH: ref_text must cover the entire clip. For a 15s clip, ~20-30 words\n"
+        "   is appropriate. VoiceStudio's OmniVoice imposes a transcript-vs-duration match.\n"
+        "7. REFERENCE LANGUAGE: ideally match the target synthesis language. Italian source for\n"
+        "   Italian output. But OmniVoice is multilingual and can cross-speak: a clean Spanish\n"
+        "   CC0 voice (e.g. 'claudia_asmr') produces excellent Italian output. AVOID noisy\n"
+        "   transcripts and multi-language references.\n"
+        "8. PROVIDER PRIORITY: archive.org (CC0 verified) > NASA PD > YouTube CC0 channels >\n"
+        "   anything else. 'ti guido verso un lungo sonno' is fine (CC0 creator). Random ASMR\n"
+        "   channels without license info: SKIP.\n"
+        "9. NEVER auto-clone without these checks. If the user gives a vague request like 'clone\n"
+        "   an ASMR voice', PROPOSE 2-3 candidates with their source URLs, license, and a\n"
+        "   15s clip suggestion. Do NOT silently pick the first YouTube result.\n"
+        "10. AUDIT-ABLE: after cloning, always report voice_name, ref_audio_path, ref_text,\n"
+        "    source_url (if URL mode), and a one-line note on the source license.\n"
+        "\n"
         "URL CLIP EXTRACTION (clone_voice_from_audio Mode B):\n"
         "  - audio_url: full YouTube (or yt-dlp-supported) URL.\n"
-        "  - ts: start second (default 0).\n"
-        "  - tf: end second (default: end of stream).\n"
-        "  - SUGGESTED DURATION: 5-30 seconds ideal. < 3s: too little acoustic data. > 60s: slow.\n"
-        "  - Pipeline: yt-dlp download -> ffmpeg slice -> 24kHz mono 16-bit PCM WAV -> clone.\n"
+        "  - ts: start second (default 0). For YouTube ASMR, start at the FIRST quiet vocal\n"
+        "    segment after intros/jingles (often 30-60s in).\n"
+        "  - tf: end second (default: end of stream). Cap at ts+30 for a 15-30s clip.\n"
+        "  - Pipeline: yt-dlp download -> ffmpeg slice [ts, tf] -> 24kHz mono 16-bit PCM WAV -> clone.\n"
         "\n"
         "ASMR EFFECTS (optional, post-synth DSP pipeline, all stereo-capable):\n"
         "  - stereo_pan: 'L<->R' for ear-to-ear whisper, 'L->R'/'R->L' for slow sweep\n"
@@ -172,9 +208,11 @@ def tool_clone_voice_from_audio(
         Field(
             description=(
                 "Mode A: absolute path to the reference audio file (WAV, 16-bit PCM, 24kHz ideal). "
-                "5-30 seconds of clear, single-speaker speech works best. "
+                "5-30 seconds of clear, single-speaker, NO background music speech works best. "
                 "Example: '/home/jagones/Repositories/VoiceStudio/inputs/asmr_sample.wav'. "
-                "Use EITHER this OR audio_url, not both. Omit both to get a validation error."
+                "Use EITHER this OR audio_url, not both. Omit both to get a validation error. "
+                "PREFER: archive.org CC0, NASA PD-US-Gov, verified royalty-free samples. "
+                "AVOID: samples with music/jingles/echo/multi-speaker."
             ),
         ),
     ] = None,
@@ -187,7 +225,10 @@ def tool_clone_voice_from_audio(
                 "Example: 'https://www.youtube.com/watch?v=21X5lGlDOfg'. "
                 "SUGGESTED DURATION: 5-30 seconds ideal for voice cloning. "
                 "Pipeline: yt-dlp download -> ffmpeg slice [ts, tf] -> 24kHz mono 16-bit PCM WAV. "
-                "Use EITHER this OR ref_audio_path, not both."
+                "Use EITHER this OR ref_audio_path, not both. "
+                "PREFER: CC0-dedicated channels, NASA PD, archive.org mirrors. "
+                "AVOID: intro/outro segments, sections with music/effects, multi-speaker clips. "
+                "Best practice: start at ts=30-60s for YouTube ASMR videos to skip intros."
             ),
         ),
     ] = None,
@@ -244,10 +285,21 @@ def tool_clone_voice_from_audio(
 
     Workflow:
       1. Pick a clean 5-30s speech sample (local file OR URL clip).
-      2. Write the exact transcript in ref_text.
+      2. Write the exact transcript in ref_text (transcribe with the openclaw
+         'youtube-transcriber' skill, then MANUALLY correct Whisper errors).
       3. Pick a memorable voice_name (used later as voice_name= in synthesize_speech).
       4. Returns a dict with 'status', 'voice_name', 'profile_path', 'ref_audio_path',
          and (for URL mode) 'source_url', 'ts', 'tf', 'clip_duration_s'.
+
+    *** CLONE SELECTION CHECKLIST (run before calling this tool) ***
+      [1] LICENSE verified: CC0 / Public Domain / royalty-free. Source documented.
+      [2] AUDIO PURITY: no music, no jingle, no sound effect, no echo, no baked-in reverb.
+      [3] SINGLE SPEAKER: only the target voice. No crosstalk, no background chatter.
+      [4] DURATION: 5-30s ideal (15s sweet spot). Clip to a clean section with ffmpeg/yt-dlp.
+      [5] ref_text CORRECT: exact transcript, with punctuation, Whisper errors fixed.
+      [6] ref_text COVERS CLIP: ~20-30 words for a 15s clip. Mismatch degrades prosody.
+      [7] SOURCE CLEAN: for YouTube, skip intros/jingles/musical interludes
+          (start at ts=30-60s typically). Pick a quiet vocal-only segment.
 
     Common errors:
       - both ref_audio_path and audio_url provided: pick one.
